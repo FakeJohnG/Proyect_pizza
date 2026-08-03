@@ -1,0 +1,6 @@
+Para ejecutar el codigo se requieren las siguientes librerias de python
+pandas
+streamlit
+google-genai
+python-dotenv
+ 
