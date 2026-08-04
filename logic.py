@@ -8,6 +8,7 @@ testearlas sin levantar la UI.
 
 from pathlib import Path
 import pandas as pd
+import math
 
 DATA_DIR = Path(__file__).parent / "datos"
 
@@ -479,6 +480,46 @@ def detect_unusual_orders(data: dict[str, pd.DataFrame], factor: float = 1.5) ->
     resultado["mensaje"] = resultado.apply(_mensaje, axis=1)
     return resultado
 
+def corrected_order_by_provider(data: dict[str, pd.DataFrame], sucursal: str) -> pd.DataFrame:
+    """
+    Arma el pedido CORREGIDO (según la proyección, no lo que la sucursal
+    pidió con errores) para una sucursal, agrupado por proveedor -- para
+    poder reenviarle a cada proveedor directamente su parte del pedido.
+ 
+    La cantidad se redondea hacia ARRIBA al formato de compra completo
+    más cercano (nunca se compra de menos; el sobrante chico es
+    redondeo normal, no un problema).
+ 
+    Ingredientes no catalogados se excluyen (no tienen formato de compra
+    conocido, no se puede calcular cuántas unidades comprar).
+    Ingredientes con necesidad real <= 0 (ya tienen stock de sobra) se
+    excluyen -- no hace falta pedirlos.
+ 
+    Devuelve un DataFrame con: proveedor, nombre, formato_compra,
+    cantidad_formatos_corregida, necesidad_real_unidad_base, unidad_base
+    -- ordenado por proveedor y luego por nombre.
+    """
+    proyeccion = project_consumption(data)
+    needs = compute_needs(data, proyeccion)
+    needs_sucursal = needs[needs["sucursal"] == sucursal].copy()
+ 
+    ingredientes = data["ingredientes"][
+        ["ingrediente_id", "nombre", "proveedor", "formato_compra", "unidad_base_por_formato", "unidad_base"]
+    ]
+    # merge "inner": los ingredientes no catalogados no tienen fila en el
+    # catálogo, así que quedan excluidos automáticamente
+    tabla = needs_sucursal.merge(ingredientes, on="ingrediente_id", how="inner")
+ 
+    tabla = tabla[tabla["necesidad_real_unidad_base"] > 0].copy()
+    tabla["cantidad_formatos_corregida"] = (
+        tabla["necesidad_real_unidad_base"] / tabla["unidad_base_por_formato"]
+    ).apply(math.ceil)
+ 
+    tabla = tabla.sort_values(["proveedor", "nombre"])
+    return tabla[
+        ["proveedor", "nombre", "formato_compra", "cantidad_formatos_corregida",
+         "necesidad_real_unidad_base", "unidad_base"]
+    ].reset_index(drop=True)
 
 if __name__ == "__main__":
     # Prueba rápida manual: python logic.py

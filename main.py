@@ -14,7 +14,7 @@ from google import genai
 from google.genai import types
 from dotenv import dotenv_values
 
-import Proyect_pizza.logic as logic
+import logic
 
 st.set_page_config(
     page_title="Barrio Pizza — Alertas de compras",
@@ -427,6 +427,29 @@ def render_ordenes_tab():
         st.session_state.data["orden"] = orden_actualizada
         st.success(f"Orden de {sucursal_elegida} actualizada. Revisá la pestaña Alertas.")
         st.rerun()
+
+    # -------------------- Pedido corregido por proveedor --------------------
+    st.divider()
+    st.markdown("#### 📦 Pedido corregido ")
+    st.caption(
+        "Esto es lo que la sucursal DEBERÍA pedir según la proyección "
+        "agrupado por proveedor."
+        
+    )
+
+    pedido_corregido = logic.corrected_order_by_provider(data, sucursal_elegida)
+
+    if pedido_corregido.empty:
+        st.info("No hace falta pedir nada de más -- el stock actual cubre la proyección.")
+    else:
+        for proveedor, grupo in pedido_corregido.groupby("proveedor", sort=False):
+            with st.expander(f"**{proveedor}** ({len(grupo)} ingredientes)"):
+                texto_lineas = [f"Pedido para {proveedor} -- {sucursal_elegida}:"]
+                for _, fila in grupo.iterrows():
+                    linea = f"- {fila['nombre']}: {fila['cantidad_formatos_corregida']} x {fila['formato_compra']}"
+                    st.markdown(linea)
+                    texto_lineas.append(linea)
+                st.code("\n".join(texto_lineas), language=None)
 
 
 # ---------------------------------------------------------------------------
