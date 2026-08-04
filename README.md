@@ -16,7 +16,7 @@ Dashboard que revisa automáticamente las órdenes de compra semanales de las 4 
 ```bash
 git clone https://github.com/FakeJohnG/Proyect_pizza
 cd proyect_pizza
-pip install -r requisitos.txt
+pip install -r requirements.txt
 ```
 
 ### 2. Configurar la API key de Gemini (para el chatbot "Bob")
