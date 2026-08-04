@@ -5,7 +5,8 @@ Reto práctico para Barrio Pizza, desarrollado por Juan Delgado.
 Dashboard que revisa automáticamente las órdenes de compra semanales de las 4 sucursales y genera alertas accionables sobre qué pedir de más, de menos, o directamente qué se olvidaron de pedir.
 
 🔗 **App en vivo:** https://proyectpizza-biouho9q2mkomuqrm93phu.streamlit.app/
-🎥 **Video (3–5 min):** [TU LINK DE LOOM/YOUTUBE ACÁ]
+
+🎥 **Video (3–5 min):** https://youtu.be/ZdM4mvQnpqE
 
 ---
 
