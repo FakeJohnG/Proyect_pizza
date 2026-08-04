@@ -28,12 +28,7 @@ def load_data(data_dir: Path = DATA_DIR) -> dict[str, pd.DataFrame]:
                              por sucursal e ingrediente,
         }
 
-    Notas de diseño:
-    - encoding="utf-8-sig" porque los CSV traen BOM (el primer nombre de
-      columna venía como "\ufeffingrediente_id" si no se especifica).
-    - "orden" puede tener ingrediente_id que NO existan en el catálogo
-      (ver caso 'aji_chombo' en Costa del Este). No se filtra acá — se
-      deja para que la capa de alertas lo detecte y lo reporte aparte.
+
     """
     data_dir = Path(data_dir)
 
@@ -100,11 +95,6 @@ def project_consumption(data: dict[str, pd.DataFrame]) -> pd.DataFrame:
     Proyecta el consumo de la próxima semana por sucursal e ingrediente,
     usando la MEDIANA de las últimas 6 semanas de histórico.
 
-    Se eligió mediana en vez de promedio porque es robusta a semanas
-    atípicas (ej. Marbella tuvo un pico de 150kg de pepperoni en S3
-    contra ~29kg en las otras semanas; con promedio la proyección
-    quedaría inflada en ~67%, generando una alerta falsa).
-
     Devuelve un DataFrame con columnas:
         sucursal, ingrediente_id, consumo_proyectado_unidad_base
     """
@@ -124,11 +114,6 @@ def compute_needs(data: dict[str, pd.DataFrame], proyeccion: pd.DataFrame) -> pd
     Calcula la necesidad real de cada sucursal-ingrediente:
 
         necesidad_real = consumo_proyectado − stock_actual
-
-    Un valor negativo significa que ya tienen más stock del que van a
-    necesitar (no hace falta pedir nada esta semana, o incluso les
-    sobra). No se recorta a 0 a propósito: ese negativo es información
-    útil para detectar sobre-stock.
 
     Devuelve un DataFrame con columnas:
         sucursal, ingrediente_id, consumo_proyectado_unidad_base,
@@ -152,12 +137,6 @@ def convert_order_to_base_units(data: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """
     Convierte la orden de compra (en formatos, ej. "3 sacos") a unidad base
     (ej. kg), usando unidad_base_por_formato del catálogo.
-
-    Los ingredientes pedidos que NO están en el catálogo (ver
-    validate_data -> ingredientes_no_catalogados) no se pueden convertir:
-    quedan con pedido_unidad_base = NaN y se filtran acá, porque no hay
-    forma de generar una alerta de cantidad sin saber su formato de compra.
-    Esos casos se reportan aparte como "ingrediente desconocido".
 
     Devuelve un DataFrame con columnas:
         sucursal, ingrediente_id, cantidad_formatos,
@@ -403,12 +382,6 @@ def detect_unusual_orders(data: dict[str, pd.DataFrame], factor: float = 1.5) ->
     (porque esas reglas comparan contra el propio histórico, no contra
     las demás sucursales).
 
-    Se normaliza por tamaño usando el ratio pedido/proyección propio de
-    cada sucursal (no la cantidad cruda, que no es comparable entre
-    sucursales de tamaños distintos). Se compara ese ratio contra la
-    MEDIANA del ratio de las otras sucursales (leave-one-out) para el
-    mismo ingrediente.
-
     Un caso se marca como atípico si su ratio es >= factor veces la
     mediana de sus pares, o <= 1/factor veces esa mediana. Requiere al
     menos 3 sucursales con datos para ese ingrediente (si no, no hay
@@ -489,11 +462,6 @@ def corrected_order_by_provider(data: dict[str, pd.DataFrame], sucursal: str) ->
     La cantidad se redondea hacia ARRIBA al formato de compra completo
     más cercano (nunca se compra de menos; el sobrante chico es
     redondeo normal, no un problema).
- 
-    Ingredientes no catalogados se excluyen (no tienen formato de compra
-    conocido, no se puede calcular cuántas unidades comprar).
-    Ingredientes con necesidad real <= 0 (ya tienen stock de sobra) se
-    excluyen -- no hace falta pedirlos.
  
     Devuelve un DataFrame con: proveedor, nombre, formato_compra,
     cantidad_formatos_corregida, necesidad_real_unidad_base, unidad_base
